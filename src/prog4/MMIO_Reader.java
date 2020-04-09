@@ -14,6 +14,7 @@ package prog4;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.security.SecureRandom;
@@ -156,6 +157,18 @@ public class MMIO_Reader {
 			System.out.print(sr1 + " ");
 		}
 
+		//mbb.position(16*sr1);
+		mbb.order(ByteOrder.LITTLE_ENDIAN);
+		mbb.load();
+		System.out.println();
+		System.out.println(sr1 + " ");
+		System.out.println(mbb.getInt(16*sr1));
+		System.out.println((char)mbb.getChar((16*sr1)+4));
+		System.out.println((char)mbb.getChar((16*sr1)+6));
+		System.out.println((int)mbb.getInt((16*sr1)+8));
+		System.out.println(mbb.getInt((16*sr1)+12));
+
+		
 
 	}
 
