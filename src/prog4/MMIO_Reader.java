@@ -32,16 +32,19 @@ public class MMIO_Reader {
 // For generating random times
 private static Random rndGen = new Random(new Date().getTime());
 
-private static final int MAX_SLEEP_TIME = 1000;
+private static final int MAX_SLEEP_TIME = 10000;
 
 
 
 	
 	
 
-	//private static final Semaphore empty = new Semaphore(MAX_ALLOWED_IN_QUEUE, true); // added
-	//private static final Semaphore full = new Semaphore(MAX_ALLOWED_IN_QUEUE, true); // added
-	private static final Semaphore mutex = new Semaphore(1, true); // added
+	private static Semaphore rSem = null;// = new Semaphore(MAX_ALLOWED_IN_QUEUE, true); // added
+	private static Semaphore full = null;// = new Semaphore(MAX_ALLOWED_IN_QUEUE, true); // added
+	private static Semaphore mutex = null;// = new Semaphore(1, true); // added
+	private static Semaphore writerMutex = null;
+	private static int NUM_READERS = 0;
+	
 	
 	public static void main(String[] args) {
 		// Check if the correct number of command line arguments have been passed.
@@ -50,7 +53,8 @@ private static final int MAX_SLEEP_TIME = 1000;
 			System.exit(0);
 		}
 		
-		int NUM_READERS = 0, NUM_WRITERS = 0;
+		NUM_READERS = 0;
+		int NUM_WRITERS = 0;
 		try {
 			NUM_READERS = Integer.parseInt(args[1]);
 			System.out.println("NUM_READERS: " + NUM_READERS);
@@ -64,7 +68,11 @@ private static final int MAX_SLEEP_TIME = 1000;
 	    	System.exit(0);
 	    }
 		
- 
+		rSem = new Semaphore(NUM_READERS, true);
+		full = new Semaphore(NUM_WRITERS, true);
+		mutex = new Semaphore(1, true);
+		writerMutex = new Semaphore(1, true);
+		
 		RandomAccessFile raFile = null;
 		try {
 			raFile = new RandomAccessFile(args[0], "rw");
@@ -173,7 +181,11 @@ private static final int MAX_SLEEP_TIME = 1000;
 					//full.acquire(3);
 					// Acquire mutex lock to make sure only one thread is in the 
 					// critical section.
+					writerMutex.acquire();
+					writerMutex.release();
+					rSem.acquire();
 					mutex.acquire();
+					//mutex.acquire();
 				} catch (InterruptedException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -181,7 +193,7 @@ private static final int MAX_SLEEP_TIME = 1000;
 				
 				SecureRandom sr = new SecureRandom();
 				int sr1 = Math.abs((sr.nextInt() % (numNodes)));
-				System.out.println("**********************************");
+				System.out.println("READER**********************************");
 				//System.out.println("Node Index: " + sr1);
 				System.out.println("Node Index: " + mbb.getInt(16*sr1));
 				System.out.println("Node value[0]: " + (char)mbb.get((16*sr1)+4));
@@ -192,7 +204,7 @@ private static final int MAX_SLEEP_TIME = 1000;
 
 				int leftChild = (int)mbb.getInt((16*sr1)+8);
 				while(leftChild != -1) {
-					System.out.println("**********************************");
+					System.out.println("READER left**********************************");
 					//System.out.println(leftChild + " ");
 					System.out.println("Left Child Index: " + mbb.getInt(16*leftChild));
 					System.out.println("Node value[0]: " + (char)mbb.get((16*leftChild)+4));
@@ -205,7 +217,9 @@ private static final int MAX_SLEEP_TIME = 1000;
 				}
 				
 				// Release the mutex semaphore and release three semaphores in empty
-				mutex.release();
+				mutex.release();				
+				rSem.release();
+
 				//empty.release(3);
 				
 				// Take a break
@@ -270,7 +284,9 @@ private static final int MAX_SLEEP_TIME = 1000;
 					//empty.acquire();
 					// Try to get the mutex semaphore so only one thread is 
 					// in the critical section at a time.
-					mutex.acquire();
+					//mutex.acquire();
+					writerMutex.acquire();
+					rSem.acquire(NUM_READERS);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -283,7 +299,7 @@ private static final int MAX_SLEEP_TIME = 1000;
 		        val = (Math.abs(sr.nextInt()) % (uLimit - lLimit + 1))+ lLimit;
 		        //System.out.println("val is: " + val);
 		        mbb.put(((16*sr1)+5),(byte)val);
-				System.out.println("**********************************");
+				System.out.println("WRITER**********************************");
 				//System.out.println("Node Index: " + sr1);
 				System.out.println("Node Index: " + mbb.getInt(16*sr1));
 				System.out.println("Node value[0]: " + (char)mbb.get((16*sr1)+4));
@@ -293,7 +309,9 @@ private static final int MAX_SLEEP_TIME = 1000;
 				System.out.println("**********************************");
 				
 				// Release mutex semaphore lock
-				mutex.release();
+				//mutex.release();
+				writerMutex.release();
+				rSem.release(NUM_READERS);
 				// Release one to full semaphore
 				//full.release();
 				
