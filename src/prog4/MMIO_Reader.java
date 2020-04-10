@@ -32,7 +32,7 @@ public class MMIO_Reader {
 // For generating random times
 private static Random rndGen = new Random(new Date().getTime());
 
-private static final int MAX_SLEEP_TIME = 10000;
+private static final int MAX_SLEEP_TIME = 1;
 
 
 
@@ -40,7 +40,7 @@ private static final int MAX_SLEEP_TIME = 10000;
 	
 
 	private static Semaphore rSem = null;// = new Semaphore(MAX_ALLOWED_IN_QUEUE, true); // added
-	private static Semaphore full = null;// = new Semaphore(MAX_ALLOWED_IN_QUEUE, true); // added
+	//private static Semaphore full = null;// = new Semaphore(MAX_ALLOWED_IN_QUEUE, true); // added
 	private static Semaphore mutex = null;// = new Semaphore(1, true); // added
 	private static Semaphore writerMutex = null;
 	private static int NUM_READERS = 0;
@@ -69,7 +69,7 @@ private static final int MAX_SLEEP_TIME = 10000;
 	    }
 		
 		rSem = new Semaphore(NUM_READERS, true);
-		full = new Semaphore(NUM_WRITERS, true);
+		//full = new Semaphore(NUM_WRITERS, true);
 		mutex = new Semaphore(1, true);
 		writerMutex = new Semaphore(1, true);
 		
@@ -184,6 +184,7 @@ private static final int MAX_SLEEP_TIME = 10000;
 					writerMutex.acquire();
 					writerMutex.release();
 					rSem.acquire();
+					
 					mutex.acquire();
 					//mutex.acquire();
 				} catch (InterruptedException e1) {
@@ -292,6 +293,16 @@ private static final int MAX_SLEEP_TIME = 10000;
 				}
 				SecureRandom sr = new SecureRandom();
 				int sr1 = Math.abs((sr.nextInt() % (numNodes)));
+				
+				System.out.println("WRITER BEFORE**********************************");
+				//System.out.println("Node Index: " + sr1);
+				System.out.println("Node Index: " + mbb.getInt(16*sr1));
+				System.out.println("Node value[0]: " + (char)mbb.get((16*sr1)+4));
+				System.out.println("Node value[1]: " + (char)mbb.get((16*sr1)+5));
+				System.out.println("Left Child Index: " + (int)mbb.getInt((16*sr1)+8));
+				System.out.println("Right Child Index: " + (int)mbb.getInt((16*sr1)+12));
+				System.out.println("**********************************");
+				
 			    int uLimit = 90, lLimit = 65, val = 0;
 		        val = (Math.abs(sr.nextInt()) % (uLimit - lLimit + 1))+ lLimit;
 		        //System.out.println("val is: " + val);
@@ -299,7 +310,7 @@ private static final int MAX_SLEEP_TIME = 10000;
 		        val = (Math.abs(sr.nextInt()) % (uLimit - lLimit + 1))+ lLimit;
 		        //System.out.println("val is: " + val);
 		        mbb.put(((16*sr1)+5),(byte)val);
-				System.out.println("WRITER**********************************");
+				System.out.println("WRITER AFTER**********************************");
 				//System.out.println("Node Index: " + sr1);
 				System.out.println("Node Index: " + mbb.getInt(16*sr1));
 				System.out.println("Node value[0]: " + (char)mbb.get((16*sr1)+4));
