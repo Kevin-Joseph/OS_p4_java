@@ -46,7 +46,8 @@ public class MMIO_Reader2 {
 	
 	private static int readcount=0, writecount = 0;
 
-	private static int test = 0;
+	//for testing race conditions only
+	//private static int test = 0;
 
 	public static void main(String[] args) {
 		// Check if the correct number of command line arguments have been passed.
@@ -197,7 +198,8 @@ public class MMIO_Reader2 {
 		public void run() {
 			while (true) {
 				try {
-					test++;
+					//for testing race conditions only
+					//test++;
 					//Give the writer preference. If a writer is accessing the file, then wait.
 					//writerMutex.acquire();
 					//writerMutex.release();
@@ -332,7 +334,8 @@ public class MMIO_Reader2 {
 		public void run() {
 			while (true) {
 				try {
-					test--;
+					//for testing race conditions only
+					//test--;
 					//Allow only one writer in the critical zone at a time.
 					//writerMutex.acquire();
 					//Wait to enter the critical zone until all the readers 

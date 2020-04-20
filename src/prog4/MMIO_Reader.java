@@ -1,11 +1,14 @@
 /**
- * MIMO_Reader.java
+ * MMIO_Reader.java
  * Kevin Kulda
  * Dr. Fendt
  * Intro to Operating Systems
  * Program 4 Part 2
- * Due: 29-April-2020
- * version 2
+ * Due: 20-April-2020
+ * version 4 final
+ * 
+ * Found instructions for doing synchronization with writers preference 
+ * at http://jcsites.juniata.edu/faculty/rhodes/os/ch5d.htm.
  */
 
 package prog4;
@@ -27,15 +30,24 @@ public class MMIO_Reader {
 	// For generating random times
 	private static Random rndGen = new Random(new Date().getTime());
     // Max time for a thread to sleep
-	private static final int MAX_SLEEP_TIME = 1000;
-	private static Semaphore rSem = null;
-	private static Semaphore mutex = null;
-	private static Semaphore randMutex = null;
-	private static Semaphore writerMutex = null;
+	private static final int MAX_SLEEP_TIME = 300;
 	private static int NUM_READERS = 0;
-	// private static int test = 0;
+	//private static Semaphore rSem = null;
+	//private static Semaphore mutex = null;
+	private static Semaphore randMutex = null;
+	//private static Semaphore writerMutex = null;
+	private static Semaphore x = null;
+	private static Semaphore y = null;
+	private static Semaphore z = null;
+	private static Semaphore rsem = null;
+	private static Semaphore wsem = null;
+	private static volatile int readcount=0, writecount = 0;
+
+	//for testing race conditions only
+	//static int test;
 
 	public static void main(String[] args) {
+		//test = 0;
 		// Check if the correct number of command line arguments have been passed.
 		if (args.length != 3) {
 			System.out.println("usage: java MMIO_Reader binFile numReaders numWriters");
@@ -45,17 +57,21 @@ public class MMIO_Reader {
 		NUM_READERS = 0;
 		int NUM_WRITERS = 0;
 		//Convert program args to integers and check to make sure values are within
-		// the acceptable range.
+		// the acceptable range. Note: I made the upper limit for the number of
+		// threads 31 because in testing I noticed that over this limit
+		// threads would sometimes fail to create.
 		try {
 			NUM_READERS = Integer.parseInt(args[1]);
 			System.out.println("NUM_READERS: " + NUM_READERS);
-			if (NUM_READERS < 1 || NUM_READERS > 120) {
-				System.out.println("Number of readers must be between 1 and 120");
+			if (NUM_READERS < 1 || NUM_READERS > 31) {
+				System.out.println("Number of readers must be between 1 and 31 inclusive");
+				System.exit(0);
 			}
 			NUM_WRITERS = Integer.parseInt(args[2]);
 			System.out.println("NUM_WRITERS: " + NUM_WRITERS);
-			if (NUM_WRITERS < 1 || NUM_WRITERS > 120) {
-				System.out.println("Number of writers must be between 1 and 120");
+			if (NUM_WRITERS < 1 || NUM_WRITERS > 31) {
+				System.out.println("Number of writers must be between 1 and 31 inclusive");
+				System.exit(0);
 			}
 		} catch (NumberFormatException e) {
 			System.out.println("program argument must be an integer");
@@ -66,10 +82,16 @@ public class MMIO_Reader {
 		}
 
 		//Initialize semaphores.
-		rSem = new Semaphore(NUM_READERS, true);
-		mutex = new Semaphore(1, true);
+		//rSem = new Semaphore(NUM_READERS, true);
+		//mutex = new Semaphore(1, true);
 		randMutex = new Semaphore(1, true);
-		writerMutex = new Semaphore(1, true);
+		//writerMutex = new Semaphore(1, true);
+		
+		x = new Semaphore(1, true);
+		y = new Semaphore(1, true);
+		z = new Semaphore(1, true);
+		rsem = new Semaphore(NUM_READERS, true);
+		wsem = new Semaphore(1, true);
 
 		//Create random access file to read and write to binary file.
 		RandomAccessFile raFile = null;
@@ -78,12 +100,17 @@ public class MMIO_Reader {
 		} catch (FileNotFoundException e1) {
 			System.out.println("Could not find file specified");
 			e1.printStackTrace();
+			System.exit(1);
 		}
 		//Get the size of the provided file.
 		long size = 0;
 		try {
 			size = raFile.length();
-			System.out.println("size of file: " + size);
+			System.out.println("size of file in bytes: " + size);
+			if(size < 16) {
+				System.out.println("Empty file or file could not be found.");
+				System.exit(1);
+			}
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -178,20 +205,36 @@ public class MMIO_Reader {
 		public void run() {
 			while (true) {
 				try {
+					//for testing race conditions only
+					//test++;
 					//Give the writer preference. If a writer is accessing the file, then wait.
 					//writerMutex.acquire();
 					//writerMutex.release();
 					//Gain access to the file.
-					rSem.acquire();
+					//rSem.acquire();
+					
+					z.acquire();
+					rsem.acquire();
+					x.acquire();
+					readcount++;
+					if(readcount == 1) {
+						wsem.acquire();
+					}
+					x.release();
+					rsem.release();
+					z.release();
+					
 
 					/*
 					 * NOTE: A mutex is not required for the readers to read the file because they
 					 * do not manipulate the data. However, if I did not have a mutex around this
 					 * portion of the code the output could be ordered incorrectly because many
 					 * readers could be in this portion of the code at once. For this reason I
-					 * included the mutex for the program output.
+					 * included the mutex for the program output. If precisely ordered output is
+					 * desired, not specified in the prompt, uncomment the line directly below
+					 * and the line releasing the mutex.
 					 */
-					mutex.acquire();
+					//mutex.acquire();
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
@@ -223,8 +266,23 @@ public class MMIO_Reader {
 				}
 
 				// Release the mutex semaphore and release the reader semaphore.
-				mutex.release();
-				rSem.release();
+				//mutex.release();
+				
+				
+				try {
+					x.acquire();
+					readcount--;
+					if(readcount == 0) {
+						wsem.release();
+					}
+					x.release();
+
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				//rSem.release();
 				// Sleep for a while
 				try {
 					randMutex.acquire();
@@ -285,12 +343,24 @@ public class MMIO_Reader {
 		public void run() {
 			while (true) {
 				try {
+					//for testing race conditions only
+					//test--;
 					//Allow only one writer in the critical zone at a time.
-					writerMutex.acquire();
+					//writerMutex.acquire();
 					//Wait to enter the critical zone until all the readers 
 					// have finished.
-					rSem.acquire(NUM_READERS);
-					writerMutex.release();
+					//rSem.acquire(NUM_READERS);
+					//writerMutex.release();
+					
+					y.acquire();
+					writecount++;
+					if(writecount == 1) {
+						rsem.acquire(NUM_READERS);
+					}
+					y.release();
+					wsem.acquire();
+					
+					
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -325,8 +395,21 @@ public class MMIO_Reader {
 
 				//Release the writer semaphore and reader semaphores.
 				//writerMutex.release();
-				rSem.release(NUM_READERS);
-
+				//rSem.release(NUM_READERS);
+				
+				wsem.release();
+				try {
+					y.acquire();
+					writecount--;
+					if(writecount == 0) {
+						rsem.release(NUM_READERS);
+					}
+					y.release();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
 				// Sleep for a while
 				try {
 					randMutex.acquire();
