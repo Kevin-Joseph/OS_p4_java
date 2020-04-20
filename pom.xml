@@ -1,0 +1,35 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>program4</groupId>
+  <artifactId>program4</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.0</version>
+        <configuration>
+          <release>12</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.vmlens</groupId>
+        <artifactId>vmlens-maven-plugin</artifactId>
+        <version>1.0.0</version>
+        <configuration>
+            <license>
+            ==== BEGIN vmlens licence ====
+            Rpou5kwVDFrAS1O7IBuBlv/xHEnR9h
++vmz/4e+8wZIaNJetiE1mmSlXAmcUw
+BadHPNpOtHdYFbLDK/PZQyAz7dws9n
+EgQpkFGhUzP8kCHLRYahB0AHh8IL6I
+Os7csFtShvQSUIgntyy7rk0kkLTh2C
+T7gFxZnVhCcehroAMsLu8=
+            ==== END vmlens licence ====
+            </license>        
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
